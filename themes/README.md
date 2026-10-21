@@ -15,6 +15,7 @@ powershell -ExecutionPolicy Bypass -File tools\theme.ps1 -TvHost 192.168.1.50 th
 | Theme | What it does |
 |---|---|
 | `default/` | The built-in look written out as JSON, as a starting point for your own |
+| `apple-tv/` | The Apple TV (tvOS) look: `tvos_style`, five columns, one row peeking under the top row, and a streaming dock with the Apple TV app; Live TV set to TCL's `com.tcl.tv` (harmless on other sets, the Inputs menu just leaves that row out) |
 | `aurora/` | A dark aurora wallpaper (teal and violet on navy, darker at the bottom) with a matching background colour |
 | `dussehra/` | Festive skin for Dussehra (ends 21 Oct 2026): a marigold toran, a faint gold rangoli, a diya for Wi-Fi, a bell for Inputs, a marigold for Settings and a petal shower |
 | `scenes/` | 14 dark illustrated landscapes in `wallpapers/`, a new one every hour; drawn from code by `tools/scenes_wallpapers.py` |
@@ -75,6 +76,7 @@ is ignored, and a file that doesn't parse is ignored as a whole, so a theme can 
 | `home_idle_clock_minutes` | 0 to 1440 | Minutes Home may sit untouched before it shows the clock screensaver (a thin clock and date drifting over a slow glow, as the system "Clock" screensaver does). Any key returns to Home. It starts only from Home, never over Live TV or an app; 0 is off (default) |
 | `cinematic_home` | bool | Cinematic top shelf: the focused dock app's artwork, softened, fills the top of the screen in its colour, with a larger name, "Last opened" (apps opened from Home), dock position dots, a focus glow in the app's colour and a translucent dock band; off by default |
 | `ambient_glow` | bool | The glow behind the dock in the focused app's colour (`true` by default); `false` keeps only `background_color` or the wallpaper, e.g. for a calm photo background |
+| `tvos_style` | bool | The Apple TV look: the focused tile lifts on a soft shadow with a glare, no glass rim and no bounce; the dock floats with no band under a full-colour top shelf (turns on `cinematic_home`); a small clock at the top right instead of the greeting, round buttons (turns on `icon_only_buttons`), names in the system sans. On in this fork's `config.xml`; `false` brings back the original look |
 
 ## Wallpapers
 

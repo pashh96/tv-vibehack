@@ -135,7 +135,7 @@
 
     <!-- Grid rows left visible under the dock on the home screen. 0 = dock sits at the very bottom. Tiles shrink if
          the dock, its title and this many rows would not otherwise fit the screen height. -->
-    <integer name="rows_below_dock">0</integer>
+    <integer name="rows_below_dock">1</integer>
 
     <!-- The focused dock app's name in large type above the dock. false keeps only the glow, which leaves room
          for bigger tiles when rows_below_dock is 2 or 3. -->
@@ -143,7 +143,7 @@
 
     <!-- Tiles per row in the grid; the dock always has this many slots. Tiles are 180dp wide at 4 columns and
          shrink to fit from 5 up (about 144dp at 5, 117dp at 6 on a 1080p TV). -->
-    <integer name="columns">4</integer>
+    <integer name="columns">5</integer>
 
     <!-- Basic motion is on; advanced effects are opt-in in the launcher's own Settings screen. -->
     <bool name="animations">true</bool>
@@ -196,4 +196,11 @@
          Live TV window does not keep the screen on (CVTE): there the system screensaver would start in the
          middle of a programme. Can also be set with "home_idle_clock_minutes": 10 in a theme's config.json. -->
     <integer name="home_idle_clock_minutes">0</integer>
+
+    <!-- Apple TV (tvOS) look: the focused tile lifts on a soft shadow with a glare across it instead of the glass rim,
+         with no bounce; the dock has no band and sits under a full-colour top shelf (cinematic_home is turned on with
+         it); a small clock replaces the greeting at the top right, beside round Control Center style buttons
+         (icon_only_buttons); names in the system sans. Pair it with 5 columns and 1 row below the dock, as tvOS does.
+         false keeps the original look. Can also be set with "tvos_style": false in a theme's config.json. -->
+    <bool name="tvos_style">true</bool>
 </resources>

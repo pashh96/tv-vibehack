@@ -128,6 +128,11 @@ final class Config {
     final boolean ambientGlow;
     /** Minutes Home may sit untouched before the clock screensaver (config.xml, home_idle_clock_minutes); 0 is off. */
     final int homeIdleClockMinutes;
+    /**
+     * Apple TV look (config.xml, tvos_style): lifted tiles with a soft shadow and glare instead of the glass rim, no
+     * dock band, a small clock at the top right. Turns on cinematic_home and icon_only_buttons with it.
+     */
+    final boolean tvosStyle;
 
     private Config(List<String> dockApps, boolean fillDock, List<String> hiddenApps, String liveTvPackage,
                    String liveTvAction, Map<String, String> launchActions, Map<String, String> appLabels,
@@ -138,7 +143,8 @@ final class Config {
                    int[] settingsKeycodes, boolean settingsKeyPanel, boolean wallpaperEnabled, File wallpaper, List<File> wallpapers,
                    int wallpaperRotationMinutes, int wallpaperDim, String wallpaperOrder, boolean overlayApplied,
                    Festival festival, int[] inputKeycodes, List<String> appKeys,
-                   List<RaceWeekend.Race> raceCalendar, boolean cinematicHome, boolean ambientGlow, int homeIdleClockMinutes) {
+                   List<RaceWeekend.Race> raceCalendar, boolean cinematicHome, boolean ambientGlow, int homeIdleClockMinutes,
+                   boolean tvosStyle) {
         this.inputKeycodes = inputKeycodes;
         this.appKeys = Collections.unmodifiableList(appKeys);
         this.dockApps = Collections.unmodifiableList(dockApps);
@@ -189,6 +195,7 @@ final class Config {
         this.cinematicHome = cinematicHome;
         this.ambientGlow = ambientGlow;
         this.homeIdleClockMinutes = homeIdleClockMinutes;
+        this.tvosStyle = tvosStyle;
     }
 
     /** The folder the theme tools push into; null when external storage is unavailable. */
@@ -239,6 +246,7 @@ final class Config {
         boolean cinematic = res.getBoolean(R.bool.cinematic_home);
         boolean ambientGlow = res.getBoolean(R.bool.ambient_glow);
         int idleClockMinutes = res.getInteger(R.integer.home_idle_clock_minutes);
+        boolean tvos = res.getBoolean(R.bool.tvos_style);
         boolean applied = false;
 
         File dir = dir(ctx);
@@ -288,6 +296,12 @@ final class Config {
             cinematic = bool(json, "cinematic_home", cinematic);
             ambientGlow = bool(json, "ambient_glow", ambientGlow);
             idleClockMinutes = integer(json, "home_idle_clock_minutes", idleClockMinutes, 0, 1440);
+            tvos = bool(json, "tvos_style", tvos);
+        }
+        // The Apple TV look is built on the cinematic shelf (its top shelf) and the round top-bar buttons.
+        if (tvos) {
+            cinematic = true;
+            iconOnlyButtons = true;
         }
         // A theme push or reset invalidates choices made on the TV. On first use, remember the
         // current theme without clearing choices from an older launcher version.
@@ -347,7 +361,7 @@ final class Config {
                 Math.max(0, Math.min(100, skyIntensity)), settingsKeycodes, settingsKeyPanel, wallpaperEnabled, wallpaper,
                 wallpapers, rotationMinutes, wallpaperDim, wallpaperOrder, applied,
                 festival, inputKeycodes, appKeys, json == null ? Collections.emptyList() : raceCalendar(json), cinematic, ambientGlow,
-                Math.max(0, idleClockMinutes));
+                Math.max(0, idleClockMinutes), tvos);
     }
 
     /**

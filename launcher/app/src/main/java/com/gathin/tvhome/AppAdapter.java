@@ -14,6 +14,7 @@ import android.graphics.Color;
 import android.graphics.Outline;
 import android.graphics.PixelFormat;
 import android.graphics.Rect;
+import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.provider.Settings;
@@ -178,6 +179,8 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
     private final float restNameAlpha;
     /** cinematic_home: only then does a launch record the last-opened app the shelf uses. */
     private final boolean cinematic;
+    /** tvos_style: a bigger lift with no overshoot, names in the system sans. */
+    private final boolean tvos;
     /** Dock order (config.xml dock_apps, or a theme's config.json). */
     private final List<String> favourites;
     /** Grid apps fill the dock slots dock_apps leaves free (config.xml, fill_dock). */
@@ -217,6 +220,7 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         this.dockRow = cfg.dockRow;
         this.restNameAlpha = cfg.alwaysShowNames ? 0.75f : 0f;
         this.cinematic = cfg.cinematicHome;
+        this.tvos = cfg.tvosStyle;
         this.launchActions = cfg.launchActions;
         this.appLabels = cfg.appLabels;
         this.appBanners = cfg.appBanners;
@@ -387,7 +391,14 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
             v.setPadding(v.getPaddingLeft(), pad, v.getPaddingRight(), pad);
         }
         name.setLayoutParams(nameLp);
-        return new Holder(v, listener, animations, advancedEffects, reducedMotion, restNameAlpha);
+        if (tvos) {
+            // Roboto Medium is the nearest the TV has to Apple's San Francisco; Outfit is a rounder geometric face.
+            Typeface sans = Typeface.create("sans-serif-medium", Typeface.NORMAL);
+            ((TextView) name).setTypeface(sans);
+            ((TextView) name).setLetterSpacing(0f);
+            ((TextView) v.findViewById(R.id.label)).setTypeface(sans);
+        }
+        return new Holder(v, listener, animations, advancedEffects, reducedMotion, restNameAlpha, focusScale(), tvos);
     }
 
     @Override
@@ -580,8 +591,11 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
     }
 
     float focusScale() {
-        return !animations ? 1f : advancedEffects ? 1.12f : 1.10f;
+        return !animations ? 1f : tvos ? TVOS_FOCUS_SCALE : advancedEffects ? 1.12f : 1.10f;
     }
+
+    /** The tvOS lift: the focused icon grows well past its neighbours' gap, over its shadow. */
+    static final float TVOS_FOCUS_SCALE = 1.15f;
 
     /** A vivid colour sampled from the app's banner (or icon), cached per entry; a card's accent when it set one. */
     int ambientColorAt(int position) {
@@ -654,9 +668,13 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         final boolean reducedMotion;
         /** Alpha of the name while the tile is not focused (always_show_names). */
         final float restNameAlpha;
+        /** The focused tile's scale (AppAdapter.focusScale). */
+        final float focusScale;
+        /** tvos_style: ease into the lift with no overshoot, the way tvOS settles a focused icon. */
+        final boolean tvos;
 
         Holder(View v, TileListener listener, boolean animations, boolean advancedEffects,
-               boolean reducedMotion, float restNameAlpha) {
+               boolean reducedMotion, float restNameAlpha, float focusScale, boolean tvos) {
             super(v);
             card = v.findViewById(R.id.card);
             cardBackground = card.getBackground();
@@ -668,6 +686,8 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
             this.advancedEffects = advancedEffects;
             this.reducedMotion = reducedMotion;
             this.restNameAlpha = restNameAlpha;
+            this.focusScale = focusScale;
+            this.tvos = tvos;
 
             final float density = v.getResources().getDisplayMetrics().density;
             card.setOutlineProvider(new ViewOutlineProvider() {
@@ -691,8 +711,7 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
                 view.animate().cancel();
                 banner.animate().cancel();
                 name.animate().cancel();
-                float scale = !animations ? 1f : advancedEffects ? 1.12f : 1.10f;
-                float s = focused ? scale : 1f;
+                float s = focused ? focusScale : 1f;
                 if (!animations) {
                     view.setScaleX(1f);
                     view.setScaleY(1f);
@@ -718,8 +737,10 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
                     view.animate().scaleX(s).scaleY(s)
                             .translationY(focused && advancedEffects ? -4f * density : 0f)
                             .translationZ(focused && advancedEffects ? 8f * density : 0f)
-                            .setDuration(advancedEffects ? (focused ? 220 : 170) : (focused ? 260 : 180))
-                            .setInterpolator(new OvershootInterpolator(focused ? (advancedEffects ? 0.7f : 1.6f) : 0f))
+                            .setDuration(tvos ? (focused ? 240 : 200)
+                                    : advancedEffects ? (focused ? 220 : 170) : (focused ? 260 : 180))
+                            .setInterpolator(tvos ? new DecelerateInterpolator(1.8f)
+                                    : new OvershootInterpolator(focused ? (advancedEffects ? 0.7f : 1.6f) : 0f))
                             .withLayer().start();
                     if (advancedEffects) {
                         banner.animate().scaleX(focused ? 1.035f : 1f).scaleY(focused ? 1.035f : 1f)

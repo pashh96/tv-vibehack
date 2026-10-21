@@ -20,6 +20,7 @@ import android.graphics.Paint;
 import android.graphics.RadialGradient;
 import android.graphics.Rect;
 import android.graphics.Shader;
+import android.graphics.Typeface;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
@@ -61,6 +62,8 @@ import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.PopupWindow;
+import android.widget.RelativeLayout;
+import android.widget.TextClock;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -129,7 +132,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
      *  is started for it, so a focus move costs nothing extra on a launcher that runs all day. */
     private boolean ambientGlow;
     private ImageView heroArt;
-    private static final float HERO_ART_ALPHA = 0.5f;
+    /** How strongly the shelf's artwork shows: tvos_style lets it fill the top like Apple TV's top shelf. */
+    private float heroArtAlpha = 0.5f;
+    /** Apple TV look (config.xml, tvos_style): see Config.tvosStyle. */
+    private boolean tvos;
     /** Softened artwork per app (HeroArt, about 5 KB each), made the first time its dock tile is focused. */
     private final Map<String, Bitmap> heroArtCache = new HashMap<>();
     /** The app whose artwork heroArt shows, so focusing it again only fades it back in. */
@@ -331,6 +337,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         sky = findViewById(R.id.sky);
         sky.setIntensity(cfg.skyIntensity);
         glass = findViewById(R.id.glass);
+        tvos = cfg.tvosStyle;
+        glass.setTvos(tvos);
         if (festive) glass.setAccent(festival.accentColor());
         ambient = findViewById(R.id.ambient);
         // The glow is one bitmap, so its alpha can be applied while drawing it. Otherwise every frame of
@@ -348,11 +356,13 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         heroArt = findViewById(R.id.heroArt);
         cinematic = cfg.cinematicHome;
         if (cinematic) setUpCinematicShelf();
+        if (tvos) setUpTvosShelf();
         // dock_title false: the name above the dock (and the cinematic lines under it) never shows; the glow
         // still follows the dock.
         if (!cfg.dockTitle) hero.setVisibility(View.GONE);
         greeting = findViewById(R.id.greeting);
         clockBlock = findViewById(R.id.leftBlock);
+        if (tvos) clockBlock = setUpTvosClock();
         greetingColor = greeting.getCurrentTextColor();
         btnWifi = findViewById(R.id.btnWifi);
         shamsiDate = findViewById(R.id.shamsiDate);
@@ -431,7 +441,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             public void onChildViewDetachedFromWindow(@NonNull View v) {
             }
         });
-        if (dockRow) grid.addItemDecoration(new DockDecoration(COLUMNS, density, cinematic, cfg.alwaysShowNames));
+        if (dockRow) grid.addItemDecoration(new DockDecoration(COLUMNS, density, cinematic, cfg.alwaysShowNames, tvos));
         if (animations) {
             int enterAnim = reducedMotion ? R.anim.tile_enter_reduced : R.anim.tile_enter;
             float enterDelay = reducedMotion ? 0f : 0.06f;
@@ -497,7 +507,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             }
         });
         for (SpringAnimation s : new SpringAnimation[]{springX, springY}) {
-            if (reducedMotion) {
+            if (tvos && !reducedMotion) {
+                // The tvOS shadow belongs to its tile: it follows with a quick, settled move and no wobble.
+                s.setSpring(new SpringForce().setStiffness(700f).setDampingRatio(0.86f));
+            } else if (reducedMotion) {
                 // Stiff and almost critically damped: settles in a few frames instead of oscillating,
                 // and stops once the highlight is within 1.5 px of its tile.
                 s.setSpring(new SpringForce().setStiffness(1400f).setDampingRatio(0.95f));
@@ -1183,7 +1196,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         Rect r = tileRect;
         r.set(0, 0, card.getWidth(), card.getHeight());
         root.offsetDescendantRectToMyCoords(card, r);
-        float pad = 6f * density;        // matches GlassView's glow inset
+        float pad = glass.inset();        // GlassView's glow or shadow room around the tile
         float scale = adapter.focusScale();
         float w = card.getWidth() * scale + 2 * pad;
         float h = card.getHeight() * scale + 2 * pad;
@@ -1202,8 +1215,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         glassTargetX = x;
         glassTargetY = y;
         // Cinematic shelf: the highlight glows in the dock app's colour, plain white in the grid.
-        int accent = cinematic && !festive && position < COLUMNS ? adapter.ambientColorAt(position) : 0;
-        if (cinematic && !festive && accent != glassAccent) {
+        int accent = cinematic && !festive && !tvos && position < COLUMNS ? adapter.ambientColorAt(position) : 0;
+        if (cinematic && !festive && !tvos && accent != glassAccent) {
             glassAccent = accent;
             glass.setAccent(accent);
         }
@@ -1242,7 +1255,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             // fade out left the grid on plain black.
             showGlowOnly(position);
             // Scroll just enough so the whole glass (not only the tile) is visible.
-            revealRect.set(0, -(int) pad * 2, item.getWidth(), item.getHeight() + (int) pad);
+            int edge = (int) (6 * density);   // the glass's own edge, not the tvOS shadow, which may run off the screen
+            revealRect.set(0, -edge * 2, item.getWidth(), item.getHeight() + edge);
             grid.requestChildRectangleOnScreen(item, revealRect, reducedMotion);
         }
     }
@@ -1254,7 +1268,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         RecyclerView.ViewHolder vh = grid.findViewHolderForAdapterPosition(pos);
         View card = vh == null ? null : vh.itemView.findViewById(R.id.card);
         if (card == null || card.getWidth() <= 0 || !card.isFocused()) return;
-        float pad = 6f * density;
+        float pad = glass.inset();
         float scale = adapter.focusScale();
         int w = (int) (card.getWidth() * scale + 2 * pad);
         int h = (int) (card.getHeight() * scale + 2 * pad);
@@ -1355,6 +1369,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     /**
      * Darkens the side the shelf's text is on and the lower part of the screen, so the name, the dock and
      * the grid stay readable over the artwork. One small bitmap stretched over the screen, like the glow.
+     * tvos_style: a neutral black, lighter at the side, so more of the top shelf's colour shows.
      */
     private Drawable scrimDrawable() {
         int w = 480, h = 270;
@@ -1363,15 +1378,66 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         boolean rtl = getResources().getBoolean(R.bool.rtl_menu_bar);
         Paint paint = new Paint();
         paint.setShader(new LinearGradient(rtl ? w : 0, 0, rtl ? 0 : w, 0,
-                new int[]{0xD1060406, 0x59060406, 0x00060406}, new float[]{0f, 0.42f, 0.7f}, Shader.TileMode.CLAMP));
+                tvos ? new int[]{0x8C000000, 0x33000000, 0x00000000} : new int[]{0xD1060406, 0x59060406, 0x00060406},
+                new float[]{0f, 0.42f, 0.7f}, Shader.TileMode.CLAMP));
         canvas.drawRect(0, 0, w, h, paint);
         paint.setShader(new LinearGradient(0, 0, 0, h,
-                new int[]{0x00060406, 0x00060406, 0xDB060406, 0xFF060406}, new float[]{0f, 0.28f, 0.58f, 0.76f},
+                tvos ? new int[]{0x33000000, 0x00000000, 0xD9000000, 0xFF000000}
+                        : new int[]{0x00060406, 0x00060406, 0xDB060406, 0xFF060406},
+                tvos ? new float[]{0f, 0.18f, 0.62f, 0.8f} : new float[]{0f, 0.28f, 0.58f, 0.76f},
                 Shader.TileMode.CLAMP));
         canvas.drawRect(0, 0, w, h, paint);
         BitmapDrawable scrim = new BitmapDrawable(getResources(), bmp);
         scrim.setGravity(Gravity.FILL);
         return scrim;
+    }
+
+    // ---- Apple TV look (tvos_style) ----------------------------------------------------------------
+
+    /**
+     * On top of the cinematic shelf: the artwork nearly opaque, so the focused app's colours fill the top of the
+     * screen like tvOS's top shelf, and the shelf's text in the system sans, the nearest the TV has to San Francisco.
+     */
+    private void setUpTvosShelf() {
+        heroArtAlpha = 0.8f;
+        Typeface medium = Typeface.create("sans-serif-medium", Typeface.NORMAL);
+        heroName.setTypeface(medium);
+        heroName.setTextSize(TypedValue.COMPLEX_UNIT_SP, 56f);
+        heroName.setLetterSpacing(-0.01f);
+        heroMeta.setTypeface(Typeface.create("sans-serif", Typeface.NORMAL));
+        ((TextView) findViewById(R.id.btnInputs)).setTypeface(medium);
+        ((TextView) findViewById(R.id.btnWifi)).setTypeface(medium);
+    }
+
+    /**
+     * tvOS keeps the top of Home for the shelf: the greeting, the big clock and the date give way to a small clock
+     * at the right end of the top bar, after the round buttons. Returns it, for updateClockVisibility to hide
+     * while the TV's time is not yet valid.
+     */
+    private View setUpTvosClock() {
+        findViewById(R.id.leftBlock).setVisibility(View.GONE);
+        LinearLayout buttons = findViewById(R.id.topButtons);
+        // The bar was aligned to the bottom of the clock block, which is gone now.
+        RelativeLayout.LayoutParams lp = (RelativeLayout.LayoutParams) buttons.getLayoutParams();
+        lp.removeRule(RelativeLayout.ALIGN_BOTTOM);
+        lp.addRule(RelativeLayout.ALIGN_PARENT_TOP);
+        lp.bottomMargin = 0;
+        buttons.setLayoutParams(lp);
+        TextClock clock = new TextClock(this);
+        clock.setFormat12Hour("h:mm");
+        clock.setFormat24Hour("HH:mm");
+        clock.setTextColor(0xF2FFFFFF);
+        clock.setTextSize(TypedValue.COMPLEX_UNIT_SP, 24f);
+        clock.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
+        clock.setIncludeFontPadding(false);
+        clock.setGravity(Gravity.CENTER_VERTICAL);
+        clock.setFocusable(false);
+        LinearLayout.LayoutParams clp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, Math.round(42 * density));
+        clp.setMarginStart(Math.round(20 * density));
+        clp.setMarginEnd(Math.round(4 * density));
+        buttons.addView(clock, clp);
+        return clock;
     }
 
     /** Swaps the backdrop to this app's artwork: fade out, swap, fade in, the way the shelf's name changes. */
@@ -1397,13 +1463,13 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         }
         heroArt.animate().alpha(0f).setDuration(140).withEndAction(() -> {
             heroArt.setImageBitmap(next);
-            heroArt.animate().alpha(HERO_ART_ALPHA).setDuration(420).start();
+            heroArt.animate().alpha(heroArtAlpha).setDuration(420).start();
         }).start();
     }
 
     private void fadeHeroArt(int ms) {
-        if (!animations) heroArt.setAlpha(HERO_ART_ALPHA);
-        else heroArt.animate().alpha(HERO_ART_ALPHA).setDuration(reducedMotion ? Math.min(ms, 160) : ms).start();
+        if (!animations) heroArt.setAlpha(heroArtAlpha);
+        else heroArt.animate().alpha(heroArtAlpha).setDuration(reducedMotion ? Math.min(ms, 160) : ms).start();
     }
 
     /** "Last opened yesterday, 9:40 PM", the time in white; nothing (but the same height) when it was never seen. */

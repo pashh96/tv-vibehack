@@ -20,13 +20,17 @@ public class DockDecoration extends RecyclerView.ItemDecoration {
 
     /** Extra band below the tiles for their names (always_show_names), in px. */
     private final float namesRoom;
+    /** tvos_style: the dock floats over the top shelf with no band, only the offsets. */
+    private final boolean bandless;
 
     /**
      * @param translucent the cinematic shelf's band: the artwork and the glow show through it.
      * @param names       the dock tiles show their names, so the band reaches down over them.
+     * @param bandless    no band at all (tvos_style).
      */
-    DockDecoration(int dockSize, float density, boolean translucent, boolean names) {
+    DockDecoration(int dockSize, float density, boolean translucent, boolean names, boolean bandless) {
         this.dockSize = dockSize;
+        this.bandless = bandless;
         this.density = density;
         this.namesRoom = names ? 22 * density : 0;
         band.setColor(translucent ? 0x8C121014 : 0xFF141416);
@@ -47,6 +51,7 @@ public class DockDecoration extends RecyclerView.ItemDecoration {
 
     @Override
     public void onDraw(@NonNull Canvas c, @NonNull RecyclerView parent, @NonNull RecyclerView.State state) {
+        if (bandless) return;
         boolean any = false;
         for (int i = 0; i < parent.getChildCount(); i++) {
             View child = parent.getChildAt(i);
