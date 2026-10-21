@@ -1,0 +1,68 @@
+# My TV: TCL "Smart TV Pro" (device BeyondTV4), Pakistan/AP firmware V8-R51MT02-LF1V903, client TCL-AP-RTD51M-S1,
+# Realtek RTD2851M (armv7l), Android TV 11 (SDK 30), build RP1A.200622.001. Stock launcher com.google.android.tvlauncher,
+# already disabled by launcher/build-and-install.sh; Home is com.gathin.tvhome.
+# Based on examples/tcl-65c725 (same BeyondTV4 platform and stock launcher, applied there with Wi-Fi up),
+# checked against this TV's own package list (2026-10-21). Everything is DISABLED, not uninstalled.
+#
+# Apply:   TV_HOST=<tv ip> tools/disable.sh mytv/debloat.txt
+# Undo:    TV_HOST=<tv ip> tools/restore.sh mytv/debloat.txt
+# Keep an app: put # in front of its line before applying, or run restore and apply again.
+#
+# Kept on purpose:
+#   Netflix, YouTube, Prime Video, Max (com.wbd.stream): yours
+#   voice: com.google.android.katniss, com.tcl.assistant, com.google.android.tv.assistant (mic LED),
+#          com.tcl.micmanager, com.google.android.tv.remote.service (also carries the mic on TCL sets), com.google.android.tts
+#   Chromecast: com.google.android.apps.mediashell
+#   Live TV and HDMI: com.tcl.tv, com.tcl.tvinput
+# DO NOT DISABLE (load-bearing on TCL): com.tcl.providers.config (Wi-Fi), com.tcl.initsetup, com.tcl.factory.view,
+#   com.tcl.system.server (remote keys), com.tcl.tcl_bt_rcu_service com.tcl.autopair (Bluetooth remote),
+#   com.tcl.settings, com.tcl.inputmethod.international (keyboard), com.tcl.xian.StartandroidService (device auth)
+# Already disabled at the factory: the uk.co.freeview.* apps, Stan, Rakuten TV, Play Movies, Play Games, Alexa.
+
+# 1. TCL tracking, ads, promo rows and content pushed at boot
+com.tcl.bi                             # TCL analytics
+com.tcl.usercenter                     # TCL account / user tracking
+com.tcl.overseasappshow                # "recommended apps"; re-enables other TCL apps at boot on Android 11
+com.tcl.partnercustomizer              # partner promo rows
+com.tcl.tv.tclhome_passive             # pushes TCL content at boot
+com.tcl.waterfall.overseas             # "TCL Channel"
+com.tcl.channelplus                    # TCL Live FAST channels
+com.tcl.messagebox                     # promo message box
+com.tcl.esticker                       # store demo sticker
+com.tcl.notereminder                   # TCL reminders
+android.autoinstalls.config.tcl.device # installs partner apps on its own
+
+# 2. Google leftovers for the stock home screen
+com.google.android.tvrecommendations   # recommendation rows, nothing shows them now
+com.google.android.partnersetup        # partner-app attribution
+com.google.android.feedback
+com.google.android.onetimeinitializer
+com.google.android.syncadapters.calendar
+
+# 3. Background extras
+com.tcl.guard                          # TCL online support
+com.tcl.keyhelp                        # remote-key help overlays
+com.tcl.useragreement                  # agreement screen, done after setup
+com.tcl.android.webview                # TCL's copy; apps use com.google.android.webview
+org.chromium.webview_shell             # WebView test browser
+com.tcl.dashboard                      # TCL quick panel; if the remote's settings button stops doing anything, restore this
+
+# 4. Preloaded apps you said you don't use
+com.google.android.youtube.tvmusic     # YouTube Music (YouTube itself stays)
+com.tcl.browser
+com.tcl.gallery
+com.tcl.ui_mediaCenter                 # USB photo/video player: restore it if you play files from a USB stick
+com.tcl.MultiScreenInteraction_TV      # TCL T-Cast; Chromecast stays
+com.tcl.miracast                       # screen mirroring
+com.tcl.t_solo                         # "listen alone" to Bluetooth headphones
+com.google.android.marvin.talkback     # screen reader
+com.android.messaging                  # SMS app, on a TV
+com.google.android.backdrop            # Ambient Mode screensaver: switch to the launcher's clock screensaver first
+
+# 5. Firmware updates. TCL updates have re-enabled disabled apps on other sets; disabling this freezes the firmware.
+#    Put # in front if you want TCL updates.
+com.tcl.versionUpdateApp
+
+# Left alone on purpose: Google's setup wizard. It may own the Wi-Fi network saved during setup, and disabling it
+# deletes that network (disable.sh refuses anyway). Home is already this launcher, so there is nothing to gain.
+# com.google.android.tungsten.setupwraith
